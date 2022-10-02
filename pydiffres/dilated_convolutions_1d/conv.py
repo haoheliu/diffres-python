@@ -809,7 +809,7 @@ class DilatedConvLarge(Module):
         return x
 
 
-class DilatedConv_128(Module):
+class DilatedConv_Out_128(Module):
     def __init__(
         self,
         in_channels: int,

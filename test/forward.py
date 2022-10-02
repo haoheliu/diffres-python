@@ -1,15 +1,23 @@
-from pydiffres import DiffRes, AvgPool
+import os
 import torch
+from pydiffres import DiffRes, AvgPool, AvgMaxPool, ConvAvgPool, ChangeHopSize
 
-model = DiffRes(
-    in_t_dim=3000, in_f_dim=128, dimension_reduction_rate=0.5, learn_pos_emb=False
-)
-# model = AvgPool(in_t_dim=3000, in_f_dim=128, dimension_reduction_rate=0.5, learn_pos_emb=False)
+def test(module):
+    print(module)
+    model = eval(module)(
+        in_t_dim=3000, in_f_dim=128, dimension_reduction_rate=0.75, learn_pos_emb=False
+    )
 
-data = torch.randn(1, 3000, 128)  # Batchsize, t-steps, mel-bins
+    data = torch.randn(1, 3000, 128)  # Batchsize, t-steps, mel-bins
 
-ret = model(data)
-
-import ipdb
-
-ipdb.set_trace()
+    ret = model(data)
+    
+    os.makedirs(module, exist_ok=True)
+    
+    model.visualize(ret, savepath=module)
+    
+test("DiffRes")
+test("AvgPool")
+test("AvgMaxPool")
+test("ConvAvgPool")
+test("ChangeHopSize")

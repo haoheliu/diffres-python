@@ -33,16 +33,18 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[: x.size(0)]
         return self.dropout(x).permute(1, 0, 2)
 
-
 class Base(nn.Module):
     def __init__(
         self, in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb=False
     ):
         super(Base, self).__init__()
-        self.preserv_ratio = dimension_reduction_rate
+        
+        assert dimension_reduction_rate < 1.0, "Error: Invalid dimension reduction rate %s" % dimension_reduction_rate
+        
+        self.dimension_reduction_rate = dimension_reduction_rate
         self.input_seq_length = in_t_dim
         self.input_f_dim = in_f_dim
-        self.output_seq_length = int(self.input_seq_length * self.preserv_ratio)
+        self.output_seq_length = int(self.input_seq_length * (1-self.dimension_reduction_rate))
 
         self.model = None
         self.pooling = torch.nn.AdaptiveAvgPool1d(self.output_seq_length)
@@ -66,6 +68,9 @@ class Base(nn.Module):
 
     # def normalize(self, x):
     #     return ( x - self.mean ) / self.std
+
+    def zero_loss_like(self, x):
+        return torch.tensor([0.0]).to(x.device)
 
     def interpolate(self, score):
         return torch.nn.functional.interpolate(
@@ -121,7 +126,7 @@ class Base(nn.Module):
         # int_cumsum: [bs, 1, in-seq-len]
         # out: [bs, feat-dim, out-seq-len]
         out, _ = scatter_max((feature * score).permute(0, 2, 1), int_cumsum, out=out)
-        return out.permute(0, 2, 1) * (1 / self.preserv_ratio)
+        return out.permute(0, 2, 1) * (1 / (1-self.dimension_reduction_rate))
 
     def locate_first_and_last_position(self, mask):
         """Locate the first non-negative in a row, and the element before the last non-negative element in a row
@@ -299,7 +304,7 @@ class Base(nn.Module):
             guide_loss = torch.mean(importance_score[id][score_mask[id]])
             if torch.isnan(guide_loss).item():
                 continue
-            if guide_loss > self.preserv_ratio * 0.5:
+            if guide_loss > (1-self.dimension_reduction_rate) * 0.5:
                 if guide_loss_final is None:
                     guide_loss_final = guide_loss / importance_score.size(0)
                 else:

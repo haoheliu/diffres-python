@@ -6,12 +6,13 @@ import os
 import matplotlib.pyplot as plt
 
 from pydiffres.core import Base
-from pydiffres.dilated_convolutions_1d.conv import DilatedConv
+from pydiffres.dilated_convolutions_1d.conv import DilatedConv, DilatedConv_Out_128
+
+from pydiffres.pooling import Pooling_layer
 
 EPS = 1e-12
 RESCALE_INTERVEL_MIN = 1e-4
 RESCALE_INTERVEL_MAX = 1 - 1e-4
-
 
 class DiffRes(Base):
     def __init__(
@@ -71,7 +72,9 @@ class DiffRes(Base):
     def visualize(self, ret, savepath="."):
         x, y, emb, score = ret["x"], ret["feature"], ret["resolution_enc"], ret["score"]
         y = y[:, 0, :, :]
-        for i in range(x.size(0)):
+        for i in range(10): # Visualize 10 images
+            if(i >= x.size(0)):
+                break
             plt.figure(figsize=(8, 16))
             plt.subplot(411)
             plt.title("Importance score")
@@ -98,6 +101,45 @@ class DiffRes(Base):
             plt.savefig(os.path.join(savepath, "%s.png" % i))
             plt.close()
 
+class ConvAvgPool(Base):
+    def __init__(
+        self, in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb=False
+    ):
+        super().__init__(in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb)
+        self.feature_channels=1
+        self.model = DilatedConv_Out_128(in_channels=self.input_f_dim, dilation_rate=1, input_size=self.input_seq_length, kernel_size=5, stride=1)
+
+    def forward(self, x):
+        ret = {}
+        
+        # Normalize the socre value
+        feature = self.model(x.permute(0,2,1)).permute(0,2,1) + x
+        ret['feature'] = self.pooling(feature.permute(0,2,1)).permute(0,2,1).unsqueeze(1)
+        
+        
+        ret["x"] = x
+        ret["score"] = None
+        ret["resolution_enc"] = None
+        ret["avgpool"] = None
+        ret["maxpool"] = None
+        ret["feature"] = self.pooling(feature.permute(0,2,1)).permute(0,2,1).unsqueeze(1)
+        ret["guide_loss"], ret["activeness"] = self.zero_loss_like(x), self.zero_loss_like(x)
+        return ret
+
+    def visualize(self, ret, savepath="."):
+        x, y = ret['x'], ret['feature']
+        y = y[:,0,:,:] # Ignore the positional embedding on drawing the feature
+        for i in range(10):
+            if(i >= x.size(0)): 
+                break
+            plt.figure(figsize=(6, 8))
+            plt.subplot(211)
+            plt.imshow(x[i,...].detach().cpu().numpy().T, aspect="auto", interpolation='none')
+            plt.subplot(212)
+            plt.imshow(y[i,...].detach().cpu().numpy().T, aspect="auto", interpolation='none')
+            # path = os.path.dirname(logging.getLoggerClass().root.handlers[0].baseFilename)
+            plt.savefig(os.path.join(savepath, "%s.png" % i))
+            plt.close()
 
 class AvgPool(Base):
     def __init__(
@@ -114,12 +156,14 @@ class AvgPool(Base):
         ret["avgpool"] = self.pooling(x.permute(0, 2, 1)).permute(0, 2, 1).unsqueeze(1)
         ret["maxpool"] = None
         ret["feature"] = ret["avgpool"]
-        ret["guide_loss"], ret["activeness"] = None, None
+        ret["guide_loss"], ret["activeness"] = self.zero_loss_like(x), self.zero_loss_like(x)
         return ret
 
     def visualize(self, ret, savepath="."):
         x, y = ret["x"], ret["feature"]
-        for i in range(x.size(0)):
+        for i in range(10): # Visualize 10 images
+            if(i >= x.size(0)):
+                break
             plt.figure(figsize=(6, 8))
             plt.subplot(211)
             plt.title("Original spectrogram")
@@ -135,37 +179,74 @@ class AvgPool(Base):
             plt.savefig(os.path.join(savepath, "%s.png" % i))
             plt.close()
 
+class AvgMaxPool(Base):
+    def __init__(
+        self, in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb=False
+    ):
+        super().__init__(in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb)
+        self.feature_channels = 1
 
-# def test_sampler(sampler, data=None):
-#     input_tdim = 1056
-#     sampler = sampler(input_seq_length=input_tdim, preserve_ratio=0.5)
-#     if(data is None): test_input = torch.rand([3, input_tdim, 128])
-#     else: test_input = data
-#     ret =sampler(test_input)
-#     assert "score" in ret.keys()
-#     assert "score_loss" in ret.keys()
-#     assert "energy" in ret.keys()
-#     assert "feature" in ret.keys()
-#     sampler.visualize(ret)
-#     print("Perfect!", sampler, ret["feature"].size(), ret["score_loss"].size(), ret["score_loss"])
-#     return ret["feature"]
+    def forward(self, x):
+        ret = {}
+        ret["x"] = x
+        ret["score"] = None
+        ret["resolution_enc"] = None
+        ret["avgpool"] = self.pooling(x.permute(0, 2, 1)).permute(0, 2, 1).unsqueeze(1)
+        ret["maxpool"] = self.max_pooling(x.permute(0, 2, 1)).permute(0, 2, 1).unsqueeze(1)
+        ret["feature"] = ret["avgpool"] + ret["maxpool"]
+        ret["guide_loss"], ret["activeness"] = self.zero_loss_like(x), self.zero_loss_like(x)
+        return ret
 
-# # YZxq2_xOLT8o_0
-# if __name__ == "__main__":
-#     from HigherModels import *
-#     from models.diffres import *
-#     from pooling import Pooling_layer
-#     import logging
+    def visualize(self, ret, savepath="."):
+        x, y = ret["x"], ret["feature"]
+        for i in range(10): # Visualize 10 images
+            if(i >= x.size(0)):
+                break
+            plt.figure(figsize=(6, 8))
+            plt.subplot(211)
+            plt.title("Original spectrogram")
+            plt.imshow(
+                x[i, ...].detach().cpu().numpy().T, aspect="auto", interpolation="none"
+            )
+            plt.subplot(212)
+            plt.title("After avg-max pooling")
+            plt.imshow(
+                y[i, ...].detach().cpu().numpy().T, aspect="auto", interpolation="none"
+            )
+            # path = os.path.dirname(logging.getLoggerClass().root.handlers[0].baseFilename)
+            plt.savefig(os.path.join(savepath, "%s.png" % i))
+            plt.close()
 
-#     import numpy as np
+class ChangeHopSize(Base):
+    def __init__(
+        self, in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb=False
+    ):
+        super().__init__(in_t_dim, in_f_dim, dimension_reduction_rate, learn_pos_emb)
+        self.feature_channels=1
+        self.pooling = Pooling_layer(pooling_type="uniform", factor=1-dimension_reduction_rate)
+        
+    def forward(self, x):
+        ret={}
+        
+        ret["x"] = x
+        ret["score"] = None
+        ret["resolution_enc"] = None
+        ret["avgpool"] = None
+        ret["maxpool"] = None
+        ret["feature"] = self.pooling(x.unsqueeze(1))
+        ret["guide_loss"], ret["activeness"] = self.zero_loss_like(x), self.zero_loss_like(x)
+        return ret
 
-#     logging.basicConfig(
-#     filename="log.txt",
-#     filemode="a",
-#     level=logging.INFO,
-#     format="%(asctime)s - %(levelname)s: %(message)s",
-#     datefmt="%m/%d/%Y %I:%M:%S %p",
-#     )
-#     data = torch.rand([3, 1056, 128])
-
-#     out1 = test_sampler(Proposed, data=data)
+    def visualize(self, ret, savepath="."):
+        x, y = ret['x'], ret['feature']
+        for i in range(10):
+            if(i >= x.size(0)): break
+            plt.figure(figsize=(6, 8))
+            plt.subplot(211)
+            plt.title("Original spectrogram")
+            plt.imshow(x[i,...].detach().cpu().numpy().T, aspect="auto", interpolation='none')
+            plt.subplot(212)
+            plt.title("Change hop size")
+            plt.imshow(y[i,0,...].detach().cpu().numpy().T, aspect="auto", interpolation='none')
+            plt.savefig(os.path.join(savepath, "%s.png" % i))
+            plt.close()
