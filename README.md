@@ -44,6 +44,11 @@ model = DiffRes(
 # Use DiffRes to compress the temporal dimension
 # fix-resolution/hopsize Spectrogram ===========> compressed spectrogram
 ret = model(data)
+
+# 1. Add this to your loss function: ret["guide_loss"].
+# 2. Use this for classification: ret["feature"].
+# 3. Alternatively, you can also use ret["avgpool"] or ret["maxpool] classification with/without ret["resolution_enc"] for classification.
+
 ```
 
 The ret variable is a python dict, which has the following keys:
