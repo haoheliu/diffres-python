@@ -12,6 +12,10 @@ DiffRes:
 2. Merges non-essential time frames while preserving important frames. 
 3. Acts as a "drop-in" module between an audio spectrogram and a classifier, and can be end-to-end optimized.
 
+Fun fact:
+1. Working on spectrogram with a tiny hop size / very-high temporal resolution (e.g., 1 ms) becomes computationally tractable, by selectively compressing the time dimension using DiffRes.
+2. The dynamic time compression of DiffRes act as data augmentation.
+
 ![main](pics/main.png)
 
 # Usage
@@ -88,3 +92,10 @@ Coming soon
 ## Cite as
 
 Coming soon
+
+
+## Examples
+
+![main](pics/example-sc.png)
+
+![main](pics/example-as.png)
