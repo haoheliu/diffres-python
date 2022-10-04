@@ -24,9 +24,10 @@ Very simple, just insert DiffRes between the spectrogram and your down stream ta
 
 First, install this algorithm:
 ```shell
-git clone git@github.com:haoheliu/diffres-python.git
-cd diffres-python
-pip install -e .
+# Install pydiffres via pip
+pip install pydiffres
+# Install torch-scatter via conda
+conda install pytorch-scatter -c pyg
 ```
 
 Then try out this example:
