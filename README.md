@@ -1,13 +1,16 @@
 # Learning differetiable temporal resolution
 
-We proposes a novel method, DiffRes, that 
-1. Enables differentiable temporal resolution learning to improve the performance of audio classification models. 
-2. DiffRes can merges non-essential time frames while preserving important frames. 
-3. DiffRes acts as a "drop-in" module between an audio spectrogram and a classifier, and can be end-to-end optimized.
+This paper proposes DiffRes, which enables differentiable temporal resolution learning on audio spectrogram (as opposed to common fixed hop size approaches) to improve the performance of audio classification models. 
+
 
 DiffRes-based method can achieve the same or better classification accuracy with 25%-75% fewer temporal dimensions on the feature level.
 
-This algo could also be useful for the compression of other time-series data, by merging non-essential time frame and preserve important frame.
+This algo **could also be useful** for the compression of other time-series data, by merging non-essential time frame and preserve important frame.
+
+DiffRes: 
+1. Enables differentiable temporal resolution learning to improve the performance of audio classification models. 
+2. Merges non-essential time frames while preserving important frames. 
+3. Acts as a "drop-in" module between an audio spectrogram and a classifier, and can be end-to-end optimized.
 
 ![main](pics/main.png)
 
