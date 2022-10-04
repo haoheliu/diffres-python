@@ -79,6 +79,7 @@ class DiffRes(Base):
             plt.subplot(411)
             plt.title("Importance score")
             plt.plot(score[i, :, 0].detach().cpu().numpy())
+            plt.ylim([0,1])
             plt.subplot(412)
             plt.title("Original mel spectrogram")
             plt.imshow(

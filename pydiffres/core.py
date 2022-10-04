@@ -291,35 +291,32 @@ class Base(nn.Module):
 
     def guide_loss(self, mel, importance_score):
         # If the mel spectrogram is in log scale
+        # mel: [bs, t-steps, f-bins]
+        # importance_score: [bs, t-steps, 1]
         if torch.min(mel) < 0:
             x = mel.exp()
-
         score_mask = torch.mean(x, dim=-1, keepdim=True)
         score_mask = score_mask < (torch.min(score_mask) + 1e-6)
 
-        guide_loss_final = None
-        activeness_final = None
+        guide_loss_final = self.zero_loss_like(mel)
+        activeness_final = self.zero_loss_like(mel)
 
         for id in range(importance_score.size(0)):
             guide_loss = torch.mean(importance_score[id][score_mask[id]])
             if torch.isnan(guide_loss).item():
                 continue
+            
             if guide_loss > (1-self.dimension_reduction_rate) * 0.5:
-                if guide_loss_final is None:
-                    guide_loss_final = guide_loss / importance_score.size(0)
-                else:
-                    guide_loss_final = (
-                        guide_loss_final + guide_loss / importance_score.size(0)
-                    )
+                guide_loss_final = (
+                    guide_loss_final + guide_loss / importance_score.size(0)
+                )
 
             activeness = torch.std(importance_score[id][~score_mask[id]])
             if torch.isnan(activeness).item():
                 continue
-            if activeness_final is None:
-                activeness_final = activeness / importance_score.size(0)
-            else:
-                activeness_final = (
-                    activeness_final + activeness / importance_score.size(0)
-                )
+            
+            activeness_final = (
+                activeness_final + activeness / importance_score.size(0)
+            )
 
         return guide_loss_final, activeness_final
