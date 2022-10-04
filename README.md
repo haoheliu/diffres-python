@@ -2,7 +2,7 @@
 
 ![main](pics/demo.png)
 
-This work introduces DiffRes, which enables differentiable temporal resolution learning on audio spectrogram (as opposed to common fixed hop size approaches) to improve the performance of audio classification models, with negligible extra computation and parameters.
+This work introduces DiffRes, which enables differentiable temporal resolution learning on audio spectrogram (as opposed to common fixed hop size approaches) to improve the efficiency and accuracy of audio classification models, with negligible extra computation and parameters.
 
 
 DiffRes-based method can achieve the same or better classification accuracy with 25%-75% fewer temporal dimensions on the feature level.
