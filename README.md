@@ -98,11 +98,18 @@ model.visualize(ret, savepath=module)
 
 ## The classification pipline
 
-Coming soon
+Will be open-sourced upon acceptance
 
 ## Cite as
 
-Coming soon
+```bibtex
+@article{liu2022diffres,
+  title = {Learning the Spectrogram Temporal Resolution for Audio Classification},
+  author = {Liu, Haohe and Liu, Xubo and Kong, Qiuqiang and Wang, Wenwu and Plumbley, Mark D.},
+  journal={arXiv preprint arXiv:2210.01719},
+  year={2022}
+}
+```
 
 
 ## Examples
