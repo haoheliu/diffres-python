@@ -1,8 +1,16 @@
 # Learning differetiable temporal resolution
 
+<!-- <p align="center"><img src="" alt="figure" width="800"/></p> -->
+
+![gif](pics/learning_process.gif)
+
 ![main](pics/demo.png)
 
 This work introduces DiffRes, which enables differentiable temporal resolution learning on audio spectrogram (as opposed to common fixed hop size approaches) to improve the efficiency and accuracy of audio classification models, with negligible extra computation and parameters.
+
+![main](pics/main.png)
+
+> Download high-resolution version of the above gif [here](diffres-python/pics/high-res.gif).
 
 
 DiffRes-based method can achieve the same or better classification accuracy with 25%-75% fewer temporal dimensions on the feature level.
@@ -14,13 +22,13 @@ DiffRes:
 2. Merges non-essential time frames while preserving important frames. 
 3. Acts as a "drop-in" module between an audio spectrogram and a classifier, and can be end-to-end optimized.
 
+
 Fun fact:
 1. Working on spectrogram with a tiny hop size / very-high temporal resolution (e.g., 1 ms) becomes computationally tractable, by selectively compressing the time dimension using DiffRes.
 2. DiffRes learns the frame importance automatically (no explicit objective/loss function). 
 3. DiffRes acts as an information bottleneck. The more you compress (higher dimension reduction rate), the more active it will be to preserve important frames.
 4. The dynamic time compression of DiffRes acts as data augmentation.
 
-![main](pics/main.png)
 
 # Usage
 
