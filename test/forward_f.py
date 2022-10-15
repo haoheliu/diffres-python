@@ -1,6 +1,6 @@
 import os
 import torch
-from pydiffres import DiffRes, AvgPool, AvgMaxPool, ConvAvgPool, ChangeHopSize
+from pydiffres import DiffRes, AvgPool, AvgMaxPool, ConvAvgPool, ChangeHopSize, DiffResF
 
 
 def test(module):
@@ -18,8 +18,8 @@ def test(module):
     model.visualize(ret, savepath=module)
 
 
-test("DiffRes")
-test("AvgPool")
-test("AvgMaxPool")
-test("ConvAvgPool")
-test("ChangeHopSize")
+test("DiffResF")
+# test("AvgPool")
+# test("AvgMaxPool")
+# test("ConvAvgPool")
+# test("ChangeHopSize")

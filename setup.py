@@ -36,10 +36,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 VERSION = "0.0.1"
 
 # What packages are required for this module to be executed?
-REQUIRED = [
-    "torch>=1.8.0",
-    "matplotlib"
-]
+REQUIRED = ["torch>=1.8.0", "matplotlib"]
 
 # What packages are optional?
 EXTRAS = {}
