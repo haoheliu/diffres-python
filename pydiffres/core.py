@@ -9,12 +9,11 @@ EPS = 1e-12
 RESCALE_INTERVEL_MIN = 1e-4
 RESCALE_INTERVEL_MAX = 1 - 1e-4
 
-
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
-
+        assert d_model % 2 == 0, "d_model have to be an even number, got %s" % d_model
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(
             torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
@@ -32,7 +31,6 @@ class PositionalEncoding(nn.Module):
         x = x.permute(1, 0, 2)
         x = x + self.pe[: x.size(0)]
         return self.dropout(x).permute(1, 0, 2)
-
 
 class BaseT(nn.Module):
     def __init__(
@@ -57,9 +55,7 @@ class BaseT(nn.Module):
 
         emb_dropout = 0.0
         logging.info("Use positional embedding")
-        pos_emb_y = PositionalEncoding(
-            d_model=self.input_f_dim, dropout=emb_dropout, max_len=self.input_seq_length
-        )(torch.zeros((1, self.input_seq_length, self.input_f_dim)))
+        pos_emb_y = PositionalEncoding(d_model=self.input_f_dim, dropout=emb_dropout, max_len=self.input_seq_length)(torch.zeros((1, self.input_seq_length, self.input_f_dim)))
         self.pos_emb = nn.Parameter(pos_emb_y, requires_grad=learn_pos_emb)
 
     def forward(self):
@@ -294,35 +290,37 @@ class BaseT(nn.Module):
         weight = torch.clip(weight, min=0.0, max=1.0)  # [66, 1056, 264]
         return weight
 
-    def guide_loss(self, mel, importance_score):
+    def guide_loss(self, mel, importance_score, _lambda=0.5, eps=1e-6):
         # If the mel spectrogram is in log scale
         # mel: [bs, t-steps, f-bins]
         # importance_score: [bs, t-steps, 1]
         if torch.min(mel) < 0:
             x = mel.exp()
         score_mask = torch.mean(x, dim=-1, keepdim=True)
-        score_mask = score_mask < (torch.min(score_mask) + 1e-6)
-
-        guide_loss_final = self.zero_loss_like(mel)
+        
+        score_mask = score_mask < (torch.min(score_mask, dim=1, keepdim=True)[0] + eps)
+        guide_loss_total = self.zero_loss_like(mel)
+        guide_loss_final_applied = self.zero_loss_like(mel)
         activeness_final = self.zero_loss_like(mel)
 
         for id in range(importance_score.size(0)):
-            guide_loss = torch.mean(importance_score[id][score_mask[id]])
+            guide_loss = torch.mean(importance_score[id][score_mask[id]]) / (1 - self.dimension_reduction_rate)
             if torch.isnan(guide_loss).item():
                 continue
 
-            if guide_loss > (1 - self.dimension_reduction_rate) * 0.5:
-                guide_loss_final = (
-                    guide_loss_final + guide_loss / importance_score.size(0)
+            if guide_loss > _lambda:
+                guide_loss_final_applied = (
+                    guide_loss_final_applied + guide_loss / importance_score.size(0)
                 )
-
-            activeness = torch.std(importance_score[id][~score_mask[id]])
+            guide_loss_total = guide_loss_total + guide_loss / importance_score.size(0)
+            
+            activeness = torch.std(importance_score[id][~score_mask[id]] / (1 - self.dimension_reduction_rate))
             if torch.isnan(activeness).item():
                 continue
 
             activeness_final = activeness_final + activeness / importance_score.size(0)
 
-        return guide_loss_final, activeness_final
+        return guide_loss_final_applied, activeness_final, score_mask, guide_loss_total
 
 
 class BaseF(nn.Module):
@@ -524,7 +522,7 @@ class BaseF(nn.Module):
 
         ####################################################################
         # If the weight for one frame is greater than one, rescale the batch
-        max_val = torch.max(score, dim=1)[0]
+        max_val = torch.max(score, dim=2)[0]
         max_val = max_val[..., 0]
         dims_need_norm = max_val >= 1
         if torch.sum(dims_need_norm) > 0:
